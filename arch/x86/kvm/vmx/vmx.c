@@ -6459,9 +6459,18 @@ unexpected_vmexit:
 	return 0;
 }
 
+extern atomic_t exits;
+extern atomic64_t total_time;
 static int vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 {
-	int ret = __vmx_handle_exit(vcpu, exit_fastpath);
+	uint64_t exit_start_time, exit_end_time;
+	int ret;
+
+	arch_atomic_inc(&exits);	
+	exit_start_time = rdtsc();
+	ret = __vmx_handle_exit(vcpu, exit_fastpath);
+	exit_end_time = rdtsc();
+	arch_atomic64_add((exit_end_time - exit_start_time), &total_time);
 
 	/*
 	 * Exit to user space when bus lock detected to inform that there is

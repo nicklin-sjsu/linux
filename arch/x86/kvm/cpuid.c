@@ -1492,6 +1492,10 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 	return exact;
 }
 EXPORT_SYMBOL_GPL(kvm_cpuid);
+atomic_t exits = ATOMIC_INIT(0);
+atomic64_t total_time = ATOMIC64_INIT(0);
+EXPORT_SYMBOL(exits);
+EXPORT_SYMBOL(total_time);
 
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
@@ -1502,7 +1506,15 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
-	kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, false);
+	if (eax == 0x4FFFFFFC) {
+                eax = arch_atomic_read(&exits);
+        } else if (eax == 0x4FFFFFFD) {
+		ebx = (atomic64_read(&total_time) >> 32);
+		ecx = (atomic64_read(&total_time) & 0xFFFFFFFF);
+	}
+	else {
+		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, false);
+	}
 	kvm_rax_write(vcpu, eax);
 	kvm_rbx_write(vcpu, ebx);
 	kvm_rcx_write(vcpu, ecx);
