@@ -6276,6 +6276,7 @@ void dump_vmcs(struct kvm_vcpu *vcpu)
 		       vmcs_read16(VIRTUAL_PROCESSOR_ID));
 }
 
+
 /*
  * The guest has exited.  See if we can fix it or if we need userspace
  * assistance.
@@ -6461,16 +6462,25 @@ unexpected_vmexit:
 
 extern atomic_t exits;
 extern atomic64_t total_time;
+extern atomic_t exit_list[70];
+extern atomic64_t exit_time_list[70];
 static int vmx_handle_exit(struct kvm_vcpu *vcpu, fastpath_t exit_fastpath)
 {
 	uint64_t exit_start_time, exit_end_time;
 	int ret;
-
-	arch_atomic_inc(&exits);	
+	struct vcpu_vmx *vmx = to_vmx(vcpu);
+	union vmx_exit_reason exit_reason = vmx->exit_reason;
+	
 	exit_start_time = rdtsc();
 	ret = __vmx_handle_exit(vcpu, exit_fastpath);
 	exit_end_time = rdtsc();
+	arch_atomic_inc(&exits);
 	arch_atomic64_add((exit_end_time - exit_start_time), &total_time);
+	if (exit_reason.basic >= 0 && exit_reason.basic < 70) {
+		arch_atomic_inc(&exit_list[(int)exit_reason.basic]);
+		arch_atomic64_add((exit_end_time - exit_start_time), &exit_time_list[(int)exit_reason.basic]);
+	}
+	
 
 	/*
 	 * Exit to user space when bus lock detected to inform that there is

@@ -1494,25 +1494,62 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 EXPORT_SYMBOL_GPL(kvm_cpuid);
 atomic_t exits = ATOMIC_INIT(0);
 atomic64_t total_time = ATOMIC64_INIT(0);
+atomic_t exit_list[70];
+atomic64_t exit_time_list[70];
 EXPORT_SYMBOL(exits);
 EXPORT_SYMBOL(total_time);
+EXPORT_SYMBOL(exit_list);
+EXPORT_SYMBOL(exit_time_list);
 
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
 	u32 eax, ebx, ecx, edx;
+	int ecx_int;
 
 	if (cpuid_fault_enabled(vcpu) && !kvm_require_cpl(vcpu, 0))
 		return 1;
 
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
+	ecx_int = (int) ecx;
 	if (eax == 0x4FFFFFFC) {
                 eax = arch_atomic_read(&exits);
         } else if (eax == 0x4FFFFFFD) {
 		ebx = (atomic64_read(&total_time) >> 32);
 		ecx = (atomic64_read(&total_time) & 0xFFFFFFFF);
-	}
-	else {
+	} else if (eax == 0x4FFFFFFE) {
+		if (ecx_int == 5 || ecx_int == 6 || ecx_int == 11 || ecx_int == 17 || ecx_int == 65 || ecx_int == 66 || ecx_int == 69) {
+			eax = 0;
+			ebx = 0;
+			ecx = 0;
+			edx = 0;
+			printk(KERN_INFO "----------Disabled\n");		
+		} else if (ecx_int < 0 || ecx_int > 69 || ecx_int == 35 || ecx_int == 38 || ecx_int == 42) {
+			eax = 0;
+			ebx = 0;
+			ecx = 0;
+			edx = 0x4FFFFFFF;
+			printk(KERN_INFO "----------Does not support\n");		
+		} else {
+			eax = arch_atomic_read(&exit_list[ecx_int]);
+		}
+		
+	} else if (eax == 0x4FFFFFFF) {
+		if (ecx_int == 5 || ecx_int == 6 || ecx_int == 11 || ecx_int == 17 || ecx_int == 65 || ecx_int == 66 || ecx_int == 69) {
+			eax = 0;
+			ebx = 0;
+			ecx = 0;
+			edx = 0;		
+		} else if (ecx_int < 0 || ecx_int > 69 || ecx_int == 35 || ecx_int == 38 || ecx_int == 42) {
+			eax = 0;
+			ebx = 0;
+			ecx = 0;
+			edx = 0x4FFFFFFF;		
+		} else {
+			ebx = (atomic64_read(&exit_time_list[ecx_int]) >> 32);
+			ecx = (atomic64_read(&exit_time_list[ecx_int]) & 0xFFFFFFFF);	
+		}
+	} else {
 		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, false);
 	}
 	kvm_rax_write(vcpu, eax);
