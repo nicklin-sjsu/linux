@@ -101,3 +101,49 @@ they are accurate.
 6. Test
 
     ``cpuid --leaf=0x4ffffffc`` and ``cpuid --leaf=0x4ffffffd`` should return the number of exits and total time in eax, ebx, and ecx.
+    
+## Steps for assignment 3:
+1. Modify ``linux/arch/x86/kvm/cpuid.c`` in function kvm_emulate_cpuid. You can see the detailed changes in the repository
+
+    Add two global arrays exit_list and exit_time_list to store counters for each exit reason. I added them as atomic to ensure they are safe from multiprocessing.
+    There are three conditions we need to consider:
+    1. exit reason is not in sdm. Refer to sdm vmx exit reasons section for detailed index.
+        Return 0 for eax, ebc, ecx, 0x4fffffff for edx
+    2. exit reason is not enabled. Refer to linux/arch/x86/include/uapi/asm/vmx.h for detailed index.
+        Return 0 for all
+    3. exit reason valid
+        Read ecx for exit reason index
+        
+    Write exit_list[ecx] to eax if eax read matches 0x4ffffffe
+    Write exit_time_list[ecx] to ebx and ecx if eax read matches 0x4fffffff
+        
+
+2. Modify ``linux/arch/x86/kvm/vmx/vmx.c`` in function vmx_handle_exit. You can see the detailed changes in the repository
+
+    Read exit_list and exit_time_list from cpuid.c
+    Read exit_reason from vcpu, use the same steps in __vmx_handle_exit
+    Read exit index from exit_reason.basic
+    Increament exit_list[exit index] everytime this function is called and record the time before calling __vmx_handle_exit and after.
+    Add the difference between start and end time into exit_time_list[exit index].
+
+3. Rebuild
+
+    Follow step 6 in the prvious setup to rebuild.
+
+4. Reinstall kvm module
+
+    ``sudo rmmod kvm_intel``
+
+    ``sudo rmmod kvm``
+
+    ``sudo modprobe kvm``
+
+    ``sudo modprobe kvm_intel``
+
+    ``sudo reboot``
+
+5. Start L2 vm
+
+6. Test
+
+    ``cpuid --leaf=0x4ffffffe --subleaf=[exit index]`` and ``cpuid --leaf=0x4fffffff --subleaf=[exit index]`` should return the number of exits and total time in eax, ebx, and ecx.
