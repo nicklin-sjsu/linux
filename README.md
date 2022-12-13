@@ -150,13 +150,17 @@ they are accurate.
     
 Extra questions:
 1. Comment on the frequency of exits – does the number of exits increase at a stable rate? 
-The exits increase in a unstable rate. Some exits like 0, 29, 48, 54 does not increase. Some exits increase dramatically like 12, 30. Some increase slowly like 31, 49.
+    The exits increase in a unstable rate. Some exits like 0, 29, 48, 54 does not increase. Some exits increase dramatically like 12, 30. Some increase slowly like 31, 49.
 
 Or are there more exits performed during certain VM operations?
-Yes, exits that increase dramatically mean those VM operations produce more exits like 12, 30.
+
+    Yes, exits that increase dramatically mean those VM operations produce more exits like 12, 30.
 
 Approximately how many exits does a full VM boot entail?
-6006182
+
+    6006182
 
 2. Of the exit types defined in the SDM, which are the most frequent? Least?
-30 (I/O Instruction) is the most frequent with 4081081 exits on boot and there are a lot of exits that did not occur like 2, 3, 4 and exits that are not defined in sdm and exits that are not supported.
+
+    30 (I/O Instruction) is the most frequent with 4081081 exits on boot and there are a lot of exits that did not occur like 2, 3, 4 and exits that are not defined in sdm and exits that are not supported.
+    Besides 0 exits, the least exit reasons include 29 (MOV DR) with 24 exits and 0 (Exception or non-maskable interrupt (NMI)) with 27 exits.
